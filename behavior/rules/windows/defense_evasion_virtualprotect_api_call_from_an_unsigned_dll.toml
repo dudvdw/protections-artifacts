@@ -1,0 +1,209 @@
+[rule]
+description = """
+Identifies the load of an unsigned or untrusted DLL by a trusted binary followed by calling VirtualProtect API to change
+memory permission to execute or write. This may indicate execution via DLL sideloading to perform code injection.
+"""
+id = "8858facd-72b7-495c-831c-4d8ad12a8bf0"
+license = "Elastic License v2"
+name = "VirtualProtect API Call from an Unsigned DLL"
+os_list = ["windows"]
+reference = [
+    "https://www.elastic.co/security-labs/doubling-down-etw-callstacks",
+    "https://www.elastic.co/security-labs/spring-cleaning-with-latrodectus",
+]
+version = "1.0.29"
+
+query = '''
+sequence by process.entity_id
+[library where process.name != null and
+   (dll.Ext.relative_file_creation_time <= 900 or
+    dll.Ext.relative_file_name_modify_time <= 900 or
+    (dll.Ext.device.product_id : ("Virtual DVD-ROM", "Virtual Disk","USB *") and not dll.path : "C:\\*") or
+    dll.path : ("\\Device\\Mup\\*", "?:\\Users\\Public\\*", "?:\\Windows\\Tasks\\*", "?:\\ProgramData\\*")) and
+    not dll.code_signature.status : "trusted" and dll.hash.sha256 != null and
+    not dll.path : ("?:\\Windows\\Installer\\*",
+                    "?:\\Windows\\System32\\DriverStore\\FileRepository\\*",
+                    "?:\\Windows\\SysWOW64\\DriverStore\\FileRepository\\*",
+                    "?:\\Windows\\assembly\\*", 
+                    "?:\\Windows\\twain_32\\*") and
+
+  not (process.executable : ("?:\\Windows\\splwow64.exe", "?:\\Windows\\System32\\mstsc.exe") and
+       dll.path : "?:\\ProgramData\\EPSON\\*.DLL") and
+
+  not (process.code_signature.trusted == true and
+       process.code_signature.subject_name :
+                         ("PFU LIMITED", "Sky UK Limited", "Genetec inc", "Sky International AG",
+                          "EFI Software (Electronics for Imaging, Inc.)", "Amazon.com Services LLC",
+                          "VICON INDUSTRIES, INC.")) and
+
+  not (dll.name : "chrome_elf.dll" and dll.pe.original_file_name : "chrome_elf.dll") and
+  not dll.pe.imphash : ("8ed92d81df1fc6d13329436de2be9225", "71db138be05fb8109bd4d1747f7fab68", "e569e6f445d32ba23766ad67d1e3787f") and
+  not dll.hash.sha256 : 
+               ("624bf5fbf96b6399fe0a624c8da7122cc207dba4273d6373fac7796d2dc1bed9", 
+                "dfa6e54b8c5659abcf7f1ac605379afcde27f713ca6a071e9da1367c5f5098ea", 
+                "4b3d1f4ec733afa5c593be64f251560515b91cb328e5c741ff877455aff0d453", 
+                "b950c9f7fb8e9b558d9caf634d7463fb4bf0aaf69a501d8f922763f8837b0ad2",
+                "6eed2886728608f1b3f4a54a7a7d338ef1b1669f6f53a5d38bcd352f0ec755c9",
+                "139a3fba0e2035830021d50bd24b73dc6d5b8b0520ee6d946ebef1ec2f602ff0",
+                "127ebabd8e20267bdd26165cd26398bd9225d89b2977ff8de2b5f9da8a231e67",
+                "4a23537d3523441a06b705bca6a7bd601c450b17a0586d669b07fd86c1dc0962",
+                "3ed846264d5003acbd0dd624cbe4ca84606fe897fd8caa29350621906a3e28c0",
+                "b211c61e1fa89cbaf4570ee5f9712772582b2f4bb23597549ec32ea066a20b76",
+                "deaf71807722382d05244160ee35b1a14c0e621d7caf74c863475669e5c95b35",
+                "7bafd0da58d427bbe8a2d34c953a53809bcbb3ff6c6f90b8acbe6c2b3ab8fa08",
+                "8747dc251af9c3192bad2001786c626ad03903c3afaadb8c6a8c2627c66730bd",
+                "5c45a7439d127c09b74fa16a0b300fb290ba15d316397579985464be484b8e17",
+                "262816adf053d82039f17512bb4e168020cc7f5f37efdf712589a22b89903a80",
+                "96c8eb8c7ad08ef045861b711b1655df7346cd387580ba038d74e938f2037bf5", 
+                "0c33dfdc0e86f85a0e848cfbb8820868a1df2cedb850ccaf9831659d1c00e3ee", 
+                "454f7d08b4e572051be599d04f202518311f9af62e2046e4640b2b2dcbab1ff2", 
+                "4e6a640686b467ea054785430b87cdce7579a03cbdc7934dd26b30212ea04318", 
+                "43bb2dabb8bb734f32c73df321f8cb39794568c0aad4f020867f8878852747a4", 
+                "55bfb4a17b931176304990be2f502c4e8b29c6ee2893527d973740e2104ca92f", 
+                "c90a438b8de5d948e5f834ace04a0e34d20121d21b5a64b04f07bc3be2c349d9", 
+                "3cc352ae187aeb3467649ea1a6c7351f42d703c42570873891e22dddd5aa1650", 
+                "ff7a3550d183e202f16074f71744f3500b99a3fe8bd6f7d3c14d570854b2e06e", 
+                "55bfb4a17b931176304990be2f502c4e8b29c6ee2893527d973740e2104ca92f", 
+                "ddcbecf2cd2cd4904cf21e3db40c6a918df0ed3b258473fc5d6e2688dee72696", 
+                "454f7d08b4e572051be599d04f202518311f9af62e2046e4640b2b2dcbab1ff2", 
+                "7c47cf9b3881355cb36781ee187adc45004f0a4239b6592c3628cf559835e515", 
+                "34de1c3d74bcff8452bdd05251e9ac3f37fa73d7d0d842c5ccf8f1d4be31e733", 
+                "4e6a640686b467ea054785430b87cdce7579a03cbdc7934dd26b30212ea04318", 
+                "0107b58df1574083db235906c3ed6897561fbcaef4921d01d76d80e4cf5c6cee", 
+                "55bfb4a17b931176304990be2f502c4e8b29c6ee2893527d973740e2104ca92f", 
+                "f03e30c6a8c883b0d2086894675f76c772368865bb1394274f1e7ae3284ab80a",
+                "bb1611e0a0b017a657aea72067ea00db4fd6731a4899e368b6860e07f0d61922",
+                "c64b26b3d1f6e3958fabd1180c76f6bb40b55e0a47844609d2557ec93f5a7cf0",
+                "3c31dd1de5d03b4c375d4a4acc5c3a782ba4a6635c7034af5d3d7d215bef5c86",
+                "e7e403ed90519579fc6bac225f957e3658b4612d5af582e64e8149e4eaca7477",
+                "07bc9d5b972acc1b9c11ea47104711ca487337131355f69019c6ac53577194a9",
+                "188d7f7979d3e69ef0f4059e7da221e690db684a93746cd4e7607397bc513c97",
+                "c33c59e0735971c4ad3ff96bedf51d74e4032206adeeea305df8f7c71b840d6d",
+                "20635d15698d547289edb8d512cec1a322a6a0f30d101d459cf6ea0d1f2f9c38",
+                "8a43ec41225a095bf1d6e027407e86a406c5b236e0a50c15b77c524cf2010597",
+                "cff49758ffcbb6d8166accb4dc905d31e79a5d587121f95ea691bf64536ce362",
+                "a986c968e948bd83033d9fda1a85c2f44e274f552bf5da9a899ab1ee794727f9",
+                "2edc91bd457353f798678ba55884e4e6dae66fec7b444e1750f6b8e83584905e",
+                "794f0f11f13aa2e43d2a5f0ff1938394ed71a95e4b3e8c4190907610573e3327",
+                "d6054babd7f4dce815e9bf888ed815398b63029165681a0b62f492900d2f2ad1",
+                "c827359d5b62371c5c033eefd011a2daf6d2bdaa203c29db64eeaa280248f6a1",
+                "8f0f64fb33cf656cdaed265a8184f16ea734fc3758224ab40796eb46bdb23cd0",
+                "dd2bc044ee8c887225fadea3c948ab88ad86a19eb5f32e69e129ff79fca46691",
+                "e1b6289b0b999f37e14c5958042e2fb11407f8e65b3d6c6d23ad3557574992c8",
+                "7bae0ac24c2e8bcbdd388cb3a13dfc74438cf6870f5fb31e26f1483ba6d78f77",
+                "914e04a05b4842aadec68f11fbeb449da244675f1e86b77a89feb906844de6c7",
+                "51baffc543b226dd4e812c8aa92691bef81a3a8a2b36cad87589875aa90804b4",
+                "6ceb5061feab0077222044e51f0163fb257941e54f37460f601093eb983b8236",
+                "51baffc543b226dd4e812c8aa92691bef81a3a8a2b36cad87589875aa90804b4",
+                "7d69f790b2477cff7f8470f7adb1eaced119a51251321aa4a78999e6717c6829",
+                "c940bb89b28c6cc93642bc2eabfe4c90d3ad935ab77996963dcd39fe038fb78d",
+                "75647a4c4090cf314a0339939295e1de7250b5b4ccbc9a95bfdba6d6ea14cf0a",
+                "f0e49d844e0ca6035ecc5a25be06be63b0a76e856f55fb0007a8126fd37ef22f",
+                "6fe46dc36e2cad9832768bc197c1ecb3e8025cbceea6017f33377a36bbaf2d41",
+                "bcf909897a168ed514b0e631cfe1840ad715aa2e76b9445009c6a80ff030014e",
+                "9354d9bdbc7f0779a1a8693296171e13cbe6714c15c9c0f934c67e499fbcdff0",
+                "e2b761094a6f6300da32e861e8f42c359b22a0cf1d62ff3a2721882aa4d1c2c6",
+                "f0997f96bc59a9ff7d7fb8905b79996a179bfaad39a6113c9edf00135a96c561",
+                "7287a20215b22493b65b0f7780c838d9c2b4aa37ed8808a4de8b44c4a96aaa92",
+                "91ac5c0721a13191a02c180e197a8e61b389287207b45e801c6538a44a171204",
+                "2bbc922dacb029a77984f0ce9d4c295597abb4f18ea012a79239e3c921268c2c",
+                "a6e0fb174145b55150ee26f0dba8e6217c4b6d0f11ba66885fccc8282adc96bc",
+                "46cff4393ff4354e0dee9acb2918f15746b950a982a84c2ec79da053dacce130",
+                "6494bd33f20a0873209046da850b66686a288e1a068182aaa9c0ecfbd24c07ce",
+                "db1b858ff3ff962013f65be4506d6d2185599a918c785c9b253716569ae7add4",
+                "bb9a0d54cf087fbcab1a6107f65b17dd772e0df512772091b3bf9b3a46a7b820",
+                "7847f045c77351e36b91b236fc790de994e4b6503b3053e2ce548470e40cc06c",
+                "f3775b076de9a86b7cf92a0347aaabfea383c7142c29cd67c064d4a4804649a4",
+                "c5e439708e7ea8cb42cd841e852ed7df2d214bb39e9fd703cf07f622c395be35",
+                "86b4a2932609b0f88f756c822df3e6464816e10d8ffd6559c7f9526e17927161",
+                "df12938ce1fba98e1b499431eb8067ae9ef7c8e271eeb9100828e55238f48eba",
+                "27f491fa95c2ec81f2e4f8fc2f324e29c51bb1ff992bda75b95a31e7f0dd0a9d",
+                "db13610e5c21fdf78d2d77a747ad7764b5a3314adcea5e537d1084ad02ef0a41",
+                "5dca0feb6095a5351ef9ddfd90a525ccd75a62a512a1ae1db7559f3927dbe11f",
+                "607231e9502c95a43cf96deb6b0a2e2d9104b3211f797bfec32680c5ac4b8606",
+                "c69120ae89bbb6a46e0344dc64fc80939b1d2080f7c2637e68369cdd5bf41bc6",
+                "4427a983dde3160e9e4d9a542eeb0e2cb8806116b8576180de2886089069a27e",
+                "8f50545234724876e4d0f7474cd324a6a41903d708cfd6f4b91fbdbea2310677",
+                "b3d1d2dd7f9b54201ff06d56ec7f94d615df946a9a8a0c027a7151fc5c492189",
+                "05a1c85e38e77ea888fefaaab8655ee05350ba9e9cfbf266f645509e7976e9f9",
+                "5cda028106bde1c95339145bce9fc68a3d68d91a108e6776a0eff86d0f2dadc6",
+                "f0195ab7a1ab08727a620fd823616a90f8353fa1f26845ab3c041413e530f30e",
+                "3d171205aec848f93b721891806ff86b36ba639923067f6e5dabc4cf500f5831",
+                "00d9f3b238b62f4d2fc0d4695daf4f60c9622ef579fe02b71f2c55a17affd7a1",
+                "76e835100baeb7f65c2a393400a57ae1f8c9f64558381718f88873d268c09dec",
+                "339ef4de29fb5490255709dbfe87a758e63a61958d6a67149a00670e4bd30cd9",
+                "f265795af9bb3cebcf9db6113dff5cf45c55999c23a89efd5845c4b0a06d4c73",
+                "b93d06bba60f41b73a7603f174689c85f97824131d003bd6220322935e7c36dd",
+                "0fc69ec74ebb08384816ed511d255082293a4e9ed2d6780fd7ae0fe0fa7d45f3",
+                "98472d7cc481f1676c44d37ba5c5db1fbb146c68ae1b63e4d2ea32dd3c5dff90",
+                "1cbdc698c9bfb8f6685c0426b062e5ed4ab56c9f68e7e9379ad72a8f17acab5d",
+                "1cbdc698c9bfb8f6685c0426b062e5ed4ab56c9f68e7e9379ad72a8f17acab5d",
+                "cca09edd7355f857101abfb3028f1637b7dac900741256877206bbbe6554dee2",
+                "dcde73e553222c96f7fc630fea2dce27266ce4854b08313ab518ef7f223d556a",
+                "092a2e07c83239ca52924a954e9ba1febb22d15dd11aafaa4935ba8a3fbc1069",
+                "1e38e061ee5fcd4a76c591c24a39da005dc5fd58062ef8fadfe1ade95bfdbd4c",
+                "d839d7b05b9b66e83bc265aa90a4f454c9a4ee091e21c6d23ab4e33c33cbc33f")] as event0
+[api where
+  process.Ext.api.name : "VirtualProtect*" and process.Ext.api.parameters.protection : ("*X*", "*W*") and
+  process.Ext.api.parameters.size > 4096 and
+  not process.thread.Ext.call_stack_final_user_module.name : "Kernel" and
+  (
+    _arraysearch(process.thread.Ext.call_stack, $entry, stringcontains~($entry.protection_provenance, event0.dll.name)) or
+
+    startswith~(process.thread.Ext.call_stack_summary, concat("ntdll.dll|kernelbase.dll|", event0.dll.name)) or
+
+    startswith~(process.thread.Ext.call_stack_summary, concat("ntdll.dll|kernelbase.dll|Unknown|", event0.dll.name)) or
+
+    startswith~(process.thread.Ext.call_stack_summary, concat("ntdll.dll|wow64.dll|wow64cpu.dll|wow64.dll|ntdll.dll|kernelbase.dll|", event0.dll.name)) or
+
+    startswith~(process.thread.Ext.call_stack_summary, concat("ntdll.dll|", event0.dll.name)) or
+
+    startswith~(process.thread.Ext.call_stack_summary, concat("ntdll.dll|wow64.dll|wow64cpu.dll|wow64.dll|ntdll.dll|", event0.dll.name)) or
+
+    startswith~(process.thread.Ext.call_stack_summary, concat("ntdll.dll|wow64.dll|wow64cpu.dll|wow64.dll|ntdll.dll|kernelbase.dll|Unknown|", event0.dll.name)) or
+
+    startswith~(process.thread.Ext.call_stack_summary, concat("ntdll.dll|wow64.dll|wow64cpu.dll|wow64.dll|ntdll.dll|Unknown|kernelbase.dll|Unbacked|", event0.dll.name))
+  ) and
+  not (endswith~(process.thread.Ext.call_stack_final_user_module.name, process.name) and
+       process.Ext.api.behaviors : "self-modifying" and process.Ext.api.behaviors :"hollow_image")
+ ]
+ until [process where event.action:"end"]
+'''
+
+min_endpoint_version = "8.10.0"
+reputation = true
+[[actions]]
+action = "kill_process"
+field = "process.entity_id"
+state = 0
+
+[[optional_actions]]
+action = "rollback"
+field = "process.entity_id"
+state = 0
+
+[[threat]]
+framework = "MITRE ATT&CK"
+[[threat.technique]]
+id = "T1055"
+name = "Process Injection"
+reference = "https://attack.mitre.org/techniques/T1055/"
+
+[[threat.technique]]
+id = "T1574"
+name = "Hijack Execution Flow"
+reference = "https://attack.mitre.org/techniques/T1574/"
+[[threat.technique.subtechnique]]
+id = "T1574.002"
+name = "DLL Side-Loading"
+reference = "https://attack.mitre.org/techniques/T1574/002/"
+
+
+
+[threat.tactic]
+id = "TA0005"
+name = "Defense Evasion"
+reference = "https://attack.mitre.org/tactics/TA0005/"
+
+[internal]
+min_endpoint_version = "8.10.0"
